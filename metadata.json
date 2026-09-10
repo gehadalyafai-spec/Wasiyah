@@ -1,0 +1,6 @@
+{
+  "name": "وصية",
+  "description": "منصة مشفّرة لتوثيق وتحديث الوصية الشرعية وحفظ الحقوق مع التسليم المشروط وآلية نبض الحياة",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
