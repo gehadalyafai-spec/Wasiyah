@@ -78,7 +78,6 @@ import kotlin.math.roundToInt
 fun BiometricLockScreen(
     onAttemptPin: (String) -> Boolean,
     onBiometricUnlock: () -> Unit,
-    currentPinHint: String = "1234",
     modifier: Modifier = Modifier
 ) {
     var enteredPin by remember { mutableStateOf("") }
@@ -120,7 +119,7 @@ fun BiometricLockScreen(
             isError = true
             isSuccess = false
             failedAttempts++
-            errorMessage = "رمز المرور غير صحيح! الرمز الافتراضي: $currentPinHint"
+            errorMessage = "رمز المرور غير صحيح! يرجى إعادة المحاولة"
             triggerShake()
             coroutineScope.launch {
                 delay(600)
@@ -324,7 +323,7 @@ fun BiometricLockScreen(
             verticalArrangement = Arrangement.spacedBy(8.dp),
             modifier = Modifier.padding(bottom = 8.dp)
         ) {
-            // Hint for first-time use
+            // Active Encryption status badge
             Card(
                 shape = RoundedCornerShape(10.dp),
                 colors = CardDefaults.cardColors(containerColor = Color.White.copy(alpha = 0.08f)),
@@ -336,14 +335,14 @@ fun BiometricLockScreen(
                     horizontalArrangement = Arrangement.Center
                 ) {
                     Icon(
-                        imageVector = Icons.Default.Key,
+                        imageVector = Icons.Default.Lock,
                         contentDescription = null,
                         tint = GoldLight,
                         modifier = Modifier.size(16.dp)
                     )
                     Spacer(modifier = Modifier.width(6.dp))
                     Text(
-                        text = "رمز الدخول المبدئي: $currentPinHint (تستطيع تغييره بعد الدخول)",
+                        text = "🔒 تشفير AES-256-GCM مُفعّل ومحمي برمز المرور السري",
                         color = Color(0xFFE2EDE8),
                         fontSize = 12.sp,
                         fontWeight = FontWeight.Medium
@@ -472,7 +471,7 @@ fun BiometricLockScreen(
                     }
 
                     Text(
-                        text = "• رمز المرور الافتراضي لتسجيل الدخول هو: 1234\n• يمكنك تغييره فوراً إلى أي رمز سري خاص بك من داخل لوحة التحكم.",
+                        text = "• الدخول محمي برمز مرورك السري لمنع أي وصول غير مصرح به.\n• يمكنك تعيين أو تغيير رمز المرور في أي وقت من الإعدادات داخل التطبيق.",
                         style = MaterialTheme.typography.bodySmall,
                         color = GoldSecondary,
                         fontWeight = FontWeight.Bold,

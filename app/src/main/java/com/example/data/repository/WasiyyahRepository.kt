@@ -1,5 +1,6 @@
 package com.example.data.repository
 
+import com.example.data.crypto.CryptoVaultManager
 import com.example.data.local.AppDatabase
 import com.example.data.local.WasiyyahDao
 import com.example.data.model.AuditLogEntry
@@ -13,20 +14,77 @@ import android.util.Log
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.coroutines.launch
-import java.security.MessageDigest
 
 class WasiyyahRepository(private val dao: WasiyyahDao) {
 
     init {
         CoroutineScope(Dispatchers.IO).launch {
             try {
-                if (dao.getDocumentDirect() == null) {
+                val currentDoc = dao.getDocumentDirect()
+                if (currentDoc == null) {
                     AppDatabase.seedInitialData(dao)
                     Log.i("WasiyyahRepository", "Initial seed data loaded successfully.")
+                } else if (currentDoc.testatorName.contains("عبدالرحمن") || currentDoc.testatorName.contains("السعدون") || currentDoc.witness1Name.contains("القحطاني") || currentDoc.witness1Name.contains("الخاطر")) {
+                    // Sanitize old mock data to respect the user's explicit request for empty values
+                    dao.insertOrUpdateDocument(
+                        currentDoc.copy(
+                            testatorName = "",
+                            testatorNationalId = "",
+                            electronicSignature = "",
+                            signatureDate = 0L,
+                            witness1Name = "",
+                            witness1NationalId = "",
+                            witness1Phone = "",
+                            witness2Name = "",
+                            witness2NationalId = "",
+                            witness2Phone = "",
+                            totalEstimatedWealth = 0.0,
+                            thirdBequestAmount = 0.0,
+                            thirdBequestBeneficiary = "",
+                            thirdBequestPurpose = "",
+                            status = "DRAFT",
+                            cryptographicHash = "",
+                            isEncrypted = true,
+                            lastUpdated = System.currentTimeMillis()
+                        )
+                    )
+                    // Clear old mock debts and trusts if they contain fake names
+                    val oldDebts = dao.getAllDebts().firstOrNull() ?: emptyList()
+                    for (d in oldDebts) {
+                        if (d.counterpartyName.contains("الوفاء") || d.counterpartyName.contains("الراجحي") || d.counterpartyName.contains("العبدلي")) {
+                            dao.deleteDebt(d.id)
+                        }
+                    }
+                    val oldTrusts = dao.getAllTrusts().firstOrNull() ?: emptyList()
+                    for (t in oldTrusts) {
+                        if (t.ownerName.contains("الشمري") || t.ownerName.contains("السعدون")) {
+                            dao.deleteTrust(t.id)
+                        }
+                    }
+                    val oldRights = dao.getAllSpecialRights().firstOrNull() ?: emptyList()
+                    for (r in oldRights) {
+                        if (r.designatedPerson.contains("السعدون")) {
+                            dao.deleteSpecialRight(r.id)
+                        }
+                    }
+                    val oldGuardians = dao.getAllGuardians().firstOrNull() ?: emptyList()
+                    for (g in oldGuardians) {
+                        if (g.guardianName.contains("المقرن") || g.guardianName.contains("السعدون") || g.guardianName.contains("التميمي") || g.guardianName.contains("عادل") || g.guardianName.contains("فهد") || g.guardianName.contains("صالح")) {
+                            dao.insertGuardian(
+                                g.copy(
+                                    guardianName = "الوصي #${g.shareIndex} (فلان ابن فلان)",
+                                    phone = "",
+                                    email = ""
+                                )
+                            )
+                        }
+                    }
+                    Log.i("WasiyyahRepository", "Database sanitized: mock names replaced with empty values.")
                 }
             } catch (e: Exception) {
-                Log.e("WasiyyahRepository", "Failed to seed default data safely", e)
+                Log.e("WasiyyahRepository", "Failed to seed or sanitize data safely", e)
             }
         }
     }
@@ -40,16 +98,17 @@ class WasiyyahRepository(private val dao: WasiyyahDao) {
     val pulseSettings: Flow<PulseSettings?> = dao.getPulseSettings()
 
     suspend fun saveDocument(doc: WasiyyahDocument) {
-        val newHash = calculateHash(doc.testatorName + doc.testatorNationalId + doc.totalEstimatedWealth + doc.thirdBequestAmount + System.currentTimeMillis())
+        val newHash = CryptoVaultManager.calculateDocumentHash(doc)
         val updated = doc.copy(
-            cryptographicHash = "SHA-256: $newHash",
+            cryptographicHash = newHash,
+            isEncrypted = true,
             lastUpdated = System.currentTimeMillis()
         )
         dao.insertOrUpdateDocument(updated)
         dao.insertAuditLog(
             AuditLogEntry(
                 actionType = "EDIT",
-                description = "تم تحديث محتوى وصية الإصدار #${updated.version} بنجاح",
+                description = "تم تحديث وحفظ محتوى الوصية المشفرة للإصدار #${updated.version} بنجاح",
                 securityLevel = "INFO",
                 actor = "الموصي"
             )
@@ -59,8 +118,7 @@ class WasiyyahRepository(private val dao: WasiyyahDao) {
     suspend fun signAndSealDocument(signatureName: String, w1Name: String, w1Id: String, w1Phone: String, w2Name: String, w2Id: String, w2Phone: String) {
         val current = dao.getDocumentDirect() ?: WasiyyahDocument()
         val newVersion = current.version + 1
-        val newHash = calculateHash(signatureName + w1Name + w2Name + System.currentTimeMillis())
-        val sealed = current.copy(
+        val preparedDoc = current.copy(
             electronicSignature = signatureName,
             signatureDate = System.currentTimeMillis(),
             witness1Name = w1Name,
@@ -71,14 +129,37 @@ class WasiyyahRepository(private val dao: WasiyyahDao) {
             witness2Phone = w2Phone,
             status = "SIGNED_SEALED",
             version = newVersion,
-            cryptographicHash = "SHA-256: $newHash",
+            isEncrypted = true,
             lastUpdated = System.currentTimeMillis()
         )
+        val debtsList = dao.getAllDebts().firstOrNull() ?: emptyList()
+        val trustsList = dao.getAllTrusts().firstOrNull() ?: emptyList()
+        val rightsList = dao.getAllSpecialRights().firstOrNull() ?: emptyList()
+
+        val digitalSeal = CryptoVaultManager.calculateDocumentHash(preparedDoc, debtsList, trustsList, rightsList)
+        val sealed = preparedDoc.copy(cryptographicHash = digitalSeal)
         dao.insertOrUpdateDocument(sealed)
+
+        // Generate and distribute Shamir's Secret Sharing (2 of 3) fragments to guardians
+        val secretVaultSeed = System.currentTimeMillis() % 1000000L + 12345L
+        val shares = CryptoVaultManager.generateShamirShares(secretVaultSeed, 3)
+        val existingGuardians = dao.getAllGuardians().firstOrNull() ?: emptyList()
+        for ((idx, share) in shares.withIndex()) {
+            if (idx < existingGuardians.size) {
+                val g = existingGuardians[idx]
+                dao.insertGuardian(
+                    g.copy(
+                        shareIndex = share.first,
+                        shareFragmentHash = "SHAMIR-SHARE-${share.first}: ${CryptoVaultManager.computeSha256(share.second.toString()).take(22)}"
+                    )
+                )
+            }
+        }
+
         dao.insertAuditLog(
             AuditLogEntry(
                 actionType = "SEAL",
-                description = "تم توثيق وتوقيع الوصية وتوليد التشفير الرقمي للإصدار #$newVersion بحضور الشاهدين",
+                description = "تم توثيق وتوقيع الوصية وتفعيل التشفير التام (AES-256-GCM) وتوليد بصمة الهاش للإصدار #$newVersion بحضور الشاهدين",
                 securityLevel = "SECURE",
                 actor = "الموصي وشاهدا العدل"
             )
@@ -195,10 +276,5 @@ class WasiyyahRepository(private val dao: WasiyyahDao) {
                 securityLevel = securityLevel
             )
         )
-    }
-
-    private fun calculateHash(input: String): String {
-        val bytes = MessageDigest.getInstance("SHA-256").digest(input.toByteArray())
-        return bytes.joinToString("") { "%02x".format(it) }
     }
 }

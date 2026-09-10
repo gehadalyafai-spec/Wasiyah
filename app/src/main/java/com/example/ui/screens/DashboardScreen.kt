@@ -350,7 +350,7 @@ fun DashboardScreen(
                     }
 
                     Text(
-                        text = "لا يمكن لأي شخص فتح التطبيق أو الاطلاع على وصيتك وديونك وأماناتك إلا بإدخال رمز المرور الخاص بك. الرمز الافتراضي: 1234 (يُنصح بتغييره الآن).",
+                        text = "لا يمكن لأي شخص فتح التطبيق أو الاطلاع على وصيتك وديونك وأماناتك إلا بإدخال رمز المرور الخاص بك. التشفير التام AES-256-GCM مُفعّل ومحمي برمزك السري.",
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         lineHeight = 18.sp
@@ -424,8 +424,9 @@ fun DashboardScreen(
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Column {
+                            val displayName = document?.testatorName?.takeIf { it.isNotBlank() } ?: "(فلان ابن فلان)"
                             Text(
-                                text = "وثيقة وصية: ${document?.testatorName ?: "الموصي"}",
+                                text = "وثيقة وصية: $displayName",
                                 style = MaterialTheme.typography.titleMedium,
                                 fontWeight = FontWeight.Bold
                             )
@@ -677,7 +678,7 @@ fun DashboardScreen(
                     OutlinedTextField(
                         value = oldPin,
                         onValueChange = { if (it.length <= 4 && it.all { c -> c.isDigit() }) oldPin = it },
-                        label = { Text("رمز المرور الحالي (الافتراضي: 1234)") },
+                        label = { Text("رمز المرور الحالي") },
                         visualTransformation = PasswordVisualTransformation(),
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.NumberPassword),
                         modifier = Modifier

@@ -124,7 +124,7 @@ fun SettingsScreen(
                             .border(2.dp, GoldLight, RoundedCornerShape(20.dp))
                     ) {
                         Image(
-                            painter = painterResource(id = R.drawable.ic_wasiyyah_logo),
+                            painter = painterResource(id = R.drawable.ic_wasiyyah_vault_logo),
                             contentDescription = "شعار تطبيق وصية",
                             modifier = Modifier.fillMaxSize(),
                             contentScale = ContentScale.Crop
@@ -544,7 +544,7 @@ fun SettingsScreen(
                     OutlinedTextField(
                         value = oldPin,
                         onValueChange = { if (it.length <= 4 && it.all { c -> c.isDigit() }) oldPin = it },
-                        label = { Text("رمز المرور الحالي (الافتراضي: 1234)") },
+                        label = { Text("رمز المرور الحالي") },
                         visualTransformation = PasswordVisualTransformation(),
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.NumberPassword),
                         modifier = Modifier.fillMaxWidth().testTag("settings_old_pin_field"),

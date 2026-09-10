@@ -292,6 +292,7 @@ fun StepPreamble(
                     onSave(doc.copy(testatorName = it))
                 },
                 label = { Text("الاسم الثلاثي أو الرباعي للموصي") },
+                placeholder = { Text("مثال: فلان ابن فلان") },
                 modifier = Modifier
                     .fillMaxWidth()
                     .testTag("testator_name_input"),
@@ -716,17 +717,17 @@ fun StepThirdBequest(
     doc: WasiyyahDocument,
     onSave: (WasiyyahDocument) -> Unit
 ) {
-    var wealthInput by remember(doc) { mutableStateOf(doc.totalEstimatedWealth.toInt().toString()) }
-    var bequestInput by remember(doc) { mutableStateOf(doc.thirdBequestAmount.toInt().toString()) }
+    var wealthInput by remember(doc) { mutableStateOf(if (doc.totalEstimatedWealth > 0) doc.totalEstimatedWealth.toInt().toString() else "") }
+    var bequestInput by remember(doc) { mutableStateOf(if (doc.thirdBequestAmount > 0) doc.thirdBequestAmount.toInt().toString() else "") }
     var beneficiary by remember(doc) { mutableStateOf(doc.thirdBequestBeneficiary) }
     var purpose by remember(doc) { mutableStateOf(doc.thirdBequestPurpose) }
     var consentObtained by remember(doc) { mutableStateOf(doc.heirsConsentObtained) }
 
-    val wealth = wealthInput.toDoubleOrNull() ?: 1.0
+    val wealth = wealthInput.toDoubleOrNull() ?: 0.0
     val bequest = bequestInput.toDoubleOrNull() ?: 0.0
-    val maxThird = wealth / 3.0
+    val maxThird = if (wealth > 0) wealth / 3.0 else 0.0
     val percentage = if (wealth > 0) (bequest / wealth) * 100 else 0.0
-    val isExceedingThird = bequest > maxThird
+    val isExceedingThird = wealth > 0 && bequest > maxThird
 
     val numberFormatter = NumberFormat.getNumberInstance(Locale("ar", "SA"))
 
@@ -803,6 +804,7 @@ fun StepThirdBequest(
                     onSave(doc.copy(totalEstimatedWealth = w))
                 },
                 label = { Text("تقدير إجمالي الثروة / التركة التقريبية (ر.س)") },
+                placeholder = { Text("مثال: 500000") },
                 modifier = Modifier.fillMaxWidth().testTag("wealth_input"),
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                 singleLine = true
@@ -819,6 +821,7 @@ fun StepThirdBequest(
                     onSave(doc.copy(thirdBequestAmount = b, heirsConsentRequired = isExceed))
                 },
                 label = { Text("مبلغ أو قيمة الوصية بالثلث (ر.س)") },
+                placeholder = { Text("مثال: 100000") },
                 modifier = Modifier.fillMaxWidth().testTag("bequest_input"),
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                 singleLine = true
@@ -833,6 +836,7 @@ fun StepThirdBequest(
                     onSave(doc.copy(thirdBequestBeneficiary = it))
                 },
                 label = { Text("المستفيد (جهة خيرية، وقف، شخص من غير الورثة)") },
+                placeholder = { Text("مثال: جمعية الأيتام / فلان ابن فلان") },
                 modifier = Modifier.fillMaxWidth().testTag("beneficiary_input")
             )
         }
@@ -845,6 +849,7 @@ fun StepThirdBequest(
                     onSave(doc.copy(thirdBequestPurpose = it))
                 },
                 label = { Text("مصرف الوصية (صدقة جارية، بناء مسجد، طباعة مصاحف...)") },
+                placeholder = { Text("مثال: بناء مسجد أو صدقة جارية") },
                 modifier = Modifier.fillMaxWidth().testTag("purpose_input")
             )
         }
@@ -941,12 +946,15 @@ fun StepReviewAndSign(
                         fontWeight = FontWeight.Bold
                     )
                     Divider()
-                    Text(text = "• الموصي: ${doc.testatorName} (هوية: ${doc.testatorNationalId})")
+                    val displayName = doc.testatorName.ifBlank { "(فلان ابن فلان)" }
+                    val displayId = doc.testatorNationalId.ifBlank { "غير مسجلة" }
+                    val displayBeneficiary = doc.thirdBequestBeneficiary.ifBlank { "غير محدد" }
+                    Text(text = "• الموصي: $displayName (هوية: $displayId)")
                     Text(text = "• الديون التي عليه: ${debts.filter { it.type == "ON_ME" }.size} بنود بإجمالي ${numberFormatter.format(debts.filter { it.type == "ON_ME" }.sumOf { it.amount })} ر.س")
                     Text(text = "• الديون التي له عند الغير: ${debts.filter { it.type == "FOR_ME" }.size} بنود بإجمالي ${numberFormatter.format(debts.filter { it.type == "FOR_ME" }.sumOf { it.amount })} ر.س")
                     Text(text = "• الأمانات والودائع: ${trusts.size} أمانة مسجلة")
                     Text(text = "• الحقوق والوصايا الخاصة: ${specialRights.size} بنود")
-                    Text(text = "• الوصية بالثلث: ${numberFormatter.format(doc.thirdBequestAmount)} ر.س لصالح (${doc.thirdBequestBeneficiary})")
+                    Text(text = "• الوصية بالثلث: ${numberFormatter.format(doc.thirdBequestAmount)} ر.س لصالح ($displayBeneficiary)")
                 }
             }
         }
@@ -1123,6 +1131,7 @@ fun AddDebtDialog(
                     value = name,
                     onValueChange = { name = it },
                     label = { Text(if (debtType == "ON_ME") "اسم الدائن (صاحب الحق)" else "اسم المدين") },
+                    placeholder = { Text("مثال: فلان ابن فلان") },
                     modifier = Modifier.fillMaxWidth(),
                     singleLine = true
                 )
@@ -1207,6 +1216,7 @@ fun AddTrustDialog(
                     value = ownerName,
                     onValueChange = { ownerName = it },
                     label = { Text("اسم صاحب الأمانة") },
+                    placeholder = { Text("مثال: فلان ابن فلان") },
                     modifier = Modifier.fillMaxWidth(),
                     singleLine = true
                 )
@@ -1316,6 +1326,7 @@ fun AddSpecialRightDialog(
                     value = designatedPerson,
                     onValueChange = { designatedPerson = it },
                     label = { Text("الشخص المكلّف بالتنفيذ (الوصي / الناظر)") },
+                    placeholder = { Text("مثال: فلان ابن فلان") },
                     modifier = Modifier.fillMaxWidth(),
                     singleLine = true
                 )

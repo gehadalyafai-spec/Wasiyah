@@ -109,8 +109,7 @@ fun WasiyyahApp(viewModel: WasiyyahViewModel) {
             },
             onBiometricUnlock = {
                 viewModel.unlockAppWithPin(currentPin)
-            },
-            currentPinHint = currentPin
+            }
         )
     } else {
         Scaffold(

@@ -78,8 +78,8 @@ fun PartitionedDeliveryScreen(
     val numberFormatter = NumberFormat.getNumberInstance(Locale("ar", "SA"))
 
     val perspectives = listOf(
-        "المنفذ العام (المحامي)" to Icons.Default.Security,
-        "وصي القُصّر (العم فهد)" to Icons.Default.ChildCare,
+        "المنفذ العام (الوكيل المعتمد)" to Icons.Default.Security,
+        "وصي القُصّر" to Icons.Default.ChildCare,
         "الورثة الشرعيون" to Icons.Default.People,
         "ناظر الوقف والثلث" to Icons.Default.VolunteerActivism,
         "صاحب أمانة محددة" to Icons.Default.Handshake
@@ -184,7 +184,8 @@ fun GeneralExecutorEnvelope(
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
     ) {
         Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-            BadgeRow(title = "مغلف: الوصي والمنفذ العام (المحامي د. عادل المقرن)", badge = "صلاحية شاملة", color = EmeraldPrimary)
+            val testatorDisplay = doc?.testatorName?.takeIf { it.isNotBlank() } ?: "(فلان ابن فلان)"
+            BadgeRow(title = "مغلف: الوصي والمنفذ العام لوصية $testatorDisplay", badge = "صلاحية شاملة", color = EmeraldPrimary)
             Divider()
             Text(text = "• الافتتاحية والشهادة الشرعية: معلنة ومصادقة", style = MaterialTheme.typography.bodySmall)
             Text(
@@ -195,7 +196,9 @@ fun GeneralExecutorEnvelope(
                 text = "• الأمانات والودائع: يرى جميع الأمانات (${trusts.size} أمانات) مع رموز الخزائن لردها لأصحابها.",
                 style = MaterialTheme.typography.bodySmall
             )
-            Text(text = "• الشاهدان العدلان: معتمدان (سليمان الخاطر وصالح التميمي)", style = MaterialTheme.typography.bodySmall)
+            val w1 = doc?.witness1Name?.takeIf { it.isNotBlank() } ?: "الشاهد الأول"
+            val w2 = doc?.witness2Name?.takeIf { it.isNotBlank() } ?: "الشاهد الثاني"
+            Text(text = "• الشاهدان العدلان: ($w1 و $w2)", style = MaterialTheme.typography.bodySmall)
             Surface(shape = RoundedCornerShape(8.dp), color = EmeraldContainer.copy(alpha = 0.5f)) {
                 Text(
                     text = "✓ الصلاحية: كاملة للتنفيذ القضائي وتصفية التركة تحت إشراف المحكمة المختصة.",
@@ -221,7 +224,8 @@ fun MinorsGuardianEnvelope(
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
     ) {
         Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-            BadgeRow(title = "مغلف: وصي القُصّر (العم فهد السعدون)", badge = "صلاحية حضانة ورعاية", color = GoldSecondary)
+            val guardianPerson = guardianship?.designatedPerson?.takeIf { it.isNotBlank() } ?: "(فلان ابن فلان)"
+            BadgeRow(title = "مغلف: وصي القُصّر ($guardianPerson)", badge = "صلاحية حضانة ورعاية", color = GoldSecondary)
             Divider()
             Text(
                 text = "• بند الوصاية الشرعية:",
@@ -230,7 +234,7 @@ fun MinorsGuardianEnvelope(
                 color = EmeraldPrimary
             )
             Text(
-                text = guardianship?.details ?: "أوصي بأن يكون أخي فهد وصياً على أبنائي القُصّر...",
+                text = guardianship?.details?.takeIf { it.isNotBlank() } ?: "الوصاية على الأبناء القُصّر ورعاية شؤونهم وتوجيههم.",
                 style = MaterialTheme.typography.bodyMedium,
                 lineHeight = 20.sp
             )
@@ -317,8 +321,10 @@ fun WaqfExecutorEnvelope(
             BadgeRow(title = "مغلف: ناظر الوقف والجهة الخيرية", badge = "الوصية بالثلث", color = CyanCipher)
             Divider()
             Text(text = "• مقدار الوصية المخصصة: ${numberFormatter.format(doc?.thirdBequestAmount ?: 0.0)} ر.س", fontWeight = FontWeight.Bold)
-            Text(text = "• الجهة المستفيدة: ${doc?.thirdBequestBeneficiary ?: "وقف تحفيظ القرآن الكريم"}")
-            Text(text = "• المصرف الخيري: ${doc?.thirdBequestPurpose ?: "بناء سقاية ماء ووقف تعليمي صدقة جارية"}")
+            val beneficiaryText = doc?.thirdBequestBeneficiary?.takeIf { it.isNotBlank() } ?: "الجهة المستفيدة المحددة في الوثيقة"
+            val purposeText = doc?.thirdBequestPurpose?.takeIf { it.isNotBlank() } ?: "المصرف الخيري المحدد في الوثيقة"
+            Text(text = "• الجهة المستفيدة: $beneficiaryText")
+            Text(text = "• المصرف الخيري: $purposeText")
             Surface(shape = RoundedCornerShape(8.dp), color = CyanCipher.copy(alpha = 0.1f)) {
                 Text(
                     text = "🔒 خصوصية: لا يملك ناظر الوقف صلاحية الاطلاع على أسماء الورثة أو تفاصيل الديون أو الأمانات.",
@@ -340,11 +346,12 @@ fun TrustOwnerEnvelope(trust: TrustDepositItem?) {
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
     ) {
         Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-            BadgeRow(title = "مغلف: صاحب الأمانة (${trust?.ownerName ?: "أبو عبدالله الشمري"})", badge = "رد الأمانة فقط", color = GoldSecondary)
+            val ownerDisplayName = trust?.ownerName?.takeIf { it.isNotBlank() } ?: "(فلان ابن فلان)"
+            BadgeRow(title = "مغلف: صاحب الأمانة ($ownerDisplayName)", badge = "رد الأمانة فقط", color = GoldSecondary)
             Divider()
-            Text(text = "• الأمانة المودعة: ${trust?.description ?: "صك ملكية مزرعة الأصالة"}", fontWeight = FontWeight.Bold)
-            Text(text = "• مكان استلامها: ${trust?.locationDetails ?: "الخزنة المنزلية - الرف العلوي"}")
-            Text(text = "• تعليمات التسليم: ${trust?.returnInstructions ?: "يُسلم له بموجب الهوية الوطنية"}")
+            Text(text = "• الأمانة المودعة: ${trust?.description?.takeIf { it.isNotBlank() } ?: "الأمانة المسجلة"}", fontWeight = FontWeight.Bold)
+            Text(text = "• مكان استلامها: ${trust?.locationDetails?.takeIf { it.isNotBlank() } ?: "وفق البيانات المشفرة بحوزة الوصي"}")
+            Text(text = "• تعليمات التسليم: ${trust?.returnInstructions?.takeIf { it.isNotBlank() } ?: "تسليم للأصيل أو وكيله الشرعي بموجب الإثبات"}")
             Surface(shape = RoundedCornerShape(8.dp), color = Color(0xFFF3F4F6)) {
                 Text(
                     text = "🔒 عزل تام: صاحب الأمانة لا يرى حرفاً واحداً من الوصية أو التركة سوى إشعار رد أمانته فقط.",

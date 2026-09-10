@@ -487,6 +487,7 @@ fun AddGuardianDialog(
                     value = name,
                     onValueChange = { name = it },
                     label = { Text("اسم الوصي الكامل") },
+                    placeholder = { Text("مثال: فلان ابن فلان") },
                     modifier = Modifier.fillMaxWidth(),
                     singleLine = true
                 )
